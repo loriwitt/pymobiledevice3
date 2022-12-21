@@ -165,6 +165,7 @@ def automation_jsshell(lockdown: LockdownClient, url, timeout):
     inspector.connect(timeout)
     safari = inspector.open_app(SAFARI)
     session = inspector.automation_session(safari)
+
     driver = WebDriver(session)
     try:
         driver.start_session()

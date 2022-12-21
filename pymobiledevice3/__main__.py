@@ -30,7 +30,8 @@ from pymobiledevice3.cli.webinspector import cli as webinspector_cli
 from pymobiledevice3.exceptions import NoDeviceConnectedError, NotPairedError, UserDeniedPairingError, \
     PairingDialogResponsePendingError, SetProhibitedError, MissingValueError, DeviceHasPasscodeSetError, \
     DeveloperModeError, UsbmuxConnectionError, NoDeviceSelectedError, MessageNotSupportedError, InternalError, \
-    DeveloperModeIsNotEnabledError, InvalidServiceError, LaunchApplicationTimeoutError, WebInspectorNotEnabledError
+    DeveloperModeIsNotEnabledError, InvalidServiceError, LaunchApplicationTimeoutError, WebInspectorNotEnabledError, \
+    RemoteAutomationNotEnabled
 
 coloredlogs.install(level=logging.INFO)
 
@@ -92,6 +93,8 @@ def cli():
         logger.error('Unable to launch application (try to unlock device)')
     except WebInspectorNotEnabledError:
         logger.error('Web inspector is not enable')
+    except RemoteAutomationNotEnabled:
+        logger.error('Remote automation is not enable')
 
 
 if __name__ == '__main__':
