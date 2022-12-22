@@ -214,11 +214,7 @@ def inspector_jsshell(lockdown: LockdownClient, timeout):
     """
     inspector = WebinspectorService(lockdown=lockdown)
     inspector.connect(timeout)
-    try:
-        safari_app = inspector.open_app(SAFARI)
-    except TimeoutError:
-        logger.error(f'Unable to launch application by bundle `{SAFARI}`')
-        return
+    safari_app = inspector.open_app(SAFARI)
 
     reload_pages(inspector)
     available_pages = (list(inspector.get_open_pages().get('Safari', [])))
