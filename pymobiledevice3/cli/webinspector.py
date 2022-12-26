@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import Optional
 
 import IPython
 import click
@@ -150,21 +151,8 @@ def shell(lockdown: LockdownClient, timeout):
         inspector.close()
 
 
-@webinspector.command(cls=Command)
-@click.argument('url', required=False, default='')
-@click.option('-t', '--timeout', default=3, show_default=True, type=float)
-def automation_jsshell(lockdown: LockdownClient, url, timeout):
-    """
-    Opt in:
-
-        Settings -> Safari -> Advanced -> Web Inspector
-
-        Settings -> Safari -> Advanced -> Remote Automation
-    """
-    inspector = WebinspectorService(lockdown=lockdown)
-    inspector.connect(timeout)
-    safari = inspector.open_app(SAFARI)
-    session = inspector.automation_session(safari)
+def automation_js_shell(inspector: WebinspectorService, app: Application, url: str = ''):
+    session = inspector.automation_session(app)
 
     driver = WebDriver(session)
     try:
@@ -182,9 +170,24 @@ def automation_jsshell(lockdown: LockdownClient, url, timeout):
         inspector.close()
 
 
-async def inspector_js_loop(inspector: WebinspectorService, app: Application, page: Page):
+def inspector_js_shell(inspector: WebinspectorService, app: Application, url: str = '') -> Optional[Page]:
+    reload_pages(inspector)
+    available_pages = (list(inspector.get_open_pages().get('Safari', [])))
+    if not available_pages:
+        logger.error('Unable to find available pages (try to unlock device)')
+        return
+    else:
+        page_query = [inquirer.List('page', message='choose page', choices=available_pages, carousel=True)]
+        page = inquirer.prompt(page_query, theme=GreenPassion(), raise_keyboard_interrupt=True)['page']
+
+    asyncio.run(inspector_js_loop(inspector, app, page, url))
+
+
+async def inspector_js_loop(inspector: WebinspectorService, app: Application, page: Page, url: str = ''):
     inspector_session = await inspector.inspector_session(app, page)
     await inspector_session.runtime_enable()
+    if url:
+        await inspector_session.navigate_to_url(url)
 
     session = PromptSession(lexer=PygmentsLexer(lexers.JavascriptLexer), auto_suggest=AutoSuggestFromHistory(),
                             style=style_from_pygments_cls(get_style_by_name('stata-dark')),
@@ -210,26 +213,26 @@ async def inspector_js_loop(inspector: WebinspectorService, app: Application, pa
 
 @webinspector.command(cls=Command)
 @click.option('-t', '--timeout', default=3, show_default=True, type=float)
-def inspector_jsshell(lockdown: LockdownClient, timeout):
+@click.option('--automation', is_flag=True, help='Use remote automation')
+@click.argument('url', required=False, default='')
+def js_shell(lockdown: LockdownClient, timeout, automation, url):
     """
     Opt in:
 
         Settings -> Safari -> Advanced -> Web Inspector
+
+        for automation also enable:
+
+            Settings -> Safari -> Advanced -> Remote Automation
     """
     inspector = WebinspectorService(lockdown=lockdown)
     inspector.connect(timeout)
     safari_app = inspector.open_app(SAFARI)
 
-    reload_pages(inspector)
-    available_pages = (list(inspector.get_open_pages().get('Safari', [])))
-    if not available_pages:
-        logger.error('Unable to find available pages (try to unlock device)')
-        return
+    if automation:
+        automation_js_shell(inspector, safari_app, url)
     else:
-        page_query = [inquirer.List('page', message='choose page', choices=available_pages, carousel=True)]
-        page = inquirer.prompt(page_query, theme=GreenPassion(), raise_keyboard_interrupt=True)['page']
-
-    asyncio.run(inspector_js_loop(inspector, safari_app, page))
+        inspector_js_shell(inspector, safari_app, url)
 
 
 udid = ''
